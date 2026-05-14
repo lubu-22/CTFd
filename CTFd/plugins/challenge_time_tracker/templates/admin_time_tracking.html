@@ -1,0 +1,82 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Challenge Time Tracking</h1>
+        <p class="text-muted">Measures duration between first challenge open and final solve.</p>
+    </div>
+</div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <table class="table table-striped table-bordered text-center">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Team Name</th>
+                        <th>Challenge</th>
+                        <th>First Opened At</th>
+                        <th>Solved At</th>
+                        <th>Total Time Spent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td><strong>{{ record.team_name }}</strong></td>
+                        <td><span class="badge badge-info p-2">{{ record.challenge_name }}</span></td>
+                        <!-- Added classes and data attributes to hold the raw UTC strings for JS -->
+                        <td class="utc-time" data-utc="{{ record.first_opened.isoformat() }}Z">
+                            {{ record.first_opened.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </td>
+                        <td class="utc-time" data-utc="{{ record.solved_at.isoformat() }}Z">
+                            {{ record.solved_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </td>
+                        <td>
+                            <strong>
+                                {% set seconds = record.duration_seconds %}
+                                {% if seconds >= 3600 %}
+                                    {{ (seconds // 3600) }}h {{ (seconds % 3600) // 60 }}m
+                                {% elif seconds >= 60 %}
+                                    {{ seconds // 60 }}m {{ seconds % 60 }}s
+                                {% else %}
+                                    {{ seconds }}s
+                                {% endif %}
+                            </strong>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-muted text-center">No calculations completed yet. Teams must open and solve challenges to populate records.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// Automatically runs when the page loads to convert UTC text into local clock text
+document.addEventListener("DOMContentLoaded", function() {
+    const timeElements = document.querySelectorAll('.utc-time');
+    
+    timeElements.forEach(element => {
+        const utcString = element.getAttribute('data-utc');
+        if (utcString) {
+            const dateObj = new Date(utcString);
+            
+            // Format the date object into a clean local string matching your PC format
+            const localString = dateObj.getFullYear() + '-' +
+                String(dateObj.getMonth() + 1).padStart(2, '0') + '-' +
+                String(dateObj.getDate()).padStart(2, '0') + ' ' +
+                String(dateObj.getHours()).padStart(2, '0') + ':' +
+                String(dateObj.getMinutes()).padStart(2, '0') + ':' +
+                String(dateObj.getSeconds()).padStart(2, '0');
+                
+            element.innerText = localString;
+        }
+    });
+});
+</script>
+{% endblock %}
