@@ -1,0 +1,111 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1>Sponsors Management</h1>
+    </div>
+</div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-5">
+            <h3 id="form-title">Add New Sponsor</h3>
+            <!-- Added enctype attribute to allow file processing -->
+            <form method="POST" id="sponsor-form" enctype="multipart/form-data">
+                <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                <input type="hidden" name="action" id="form-action" value="create">
+                <input type="hidden" name="id" id="sponsor-id" value="">
+                
+                <div class="form-group mb-2">
+                    <label>Sponsor Name</label>
+                    <input type="text" name="name" id="input-name" class="form-control" required>
+                </div>
+                <div class="form-group mb-2">
+                    <label>Website Link</label>
+                    <input type="url" name="link" id="input-link" class="form-control" placeholder="https://example.com" required>
+                </div>
+                <div class="form-group mb-2">
+                    <label id="file-label">Sponsor Logo File</label>
+                    <!-- Changed from plain text input to a native file picker -->
+                    <input type="file" name="image_file" id="input-file" class="form-control" accept="image/*" required>
+                    <small id="file-help" class="form-text text-muted d-none">Leave empty to keep current logo.</small>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Short Description</label>
+                    <textarea name="description" id="input-desc" class="form-control" rows="3" required></textarea>
+                </div>
+                <button type="submit" id="submit-btn" class="btn btn-primary">Save Sponsor</button>
+                <button type="button" id="cancel-btn" class="btn btn-secondary d-none" onclick="resetForm()">Cancel Edit</button>
+            </form>
+        </div>
+        <div class="col-md-7">
+            <h3>Current Active Sponsors</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Logo</th>
+                        <th>Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sponsor in sponsors %}
+                    <tr>
+                        <td><img src="{{ sponsor.image }}" height="30"></td>
+                        <td><strong>{{ sponsor.name }}</strong></td>
+                        <td>
+                            <button type="button" class="btn btn-info btn-sm text-white" 
+                                    onclick="editSponsor('{{ sponsor.id }}', '{{ sponsor.name | escape }}', '{{ sponsor.link | escape }}', '{{ sponsor.description | escape }}')">
+                                Edit
+                            </button>
+                            <form method="POST" style="display:inline;">
+                                <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="id" value="{{ sponsor.id }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function editSponsor(id, name, link, description) {
+    document.getElementById('form-title').innerText = "Edit Sponsor: " + name;
+    document.getElementById('form-action').value = "update";
+    document.getElementById('sponsor-id').value = id;
+    
+    document.getElementById('input-name').value = name;
+    document.getElementById('input-link').value = link;
+    document.getElementById('input-desc').value = description;
+    
+    // When editing, file choice is optional (they might want to keep the old logo)
+    document.getElementById('input-file').removeAttribute('required');
+    document.getElementById('file-help').classList.remove('d-none');
+    
+    document.getElementById('submit-btn').innerText = "Update Sponsor";
+    document.getElementById('submit-btn').className = "btn btn-success";
+    document.getElementById('cancel-btn').classList.remove('d-none');
+}
+
+function resetForm() {
+    document.getElementById('form-title').innerText = "Add New Sponsor";
+    document.getElementById('form-action').value = "create";
+    document.getElementById('sponsor-id').value = "";
+    
+    document.getElementById('sponsor-form').reset();
+    
+    // Reset file requirements for a new entry
+    document.getElementById('input-file').setAttribute('required', 'required');
+    document.getElementById('file-help').classList.add('d-none');
+    
+    document.getElementById('submit-btn').innerText = "Save Sponsor";
+    document.getElementById('submit-btn').className = "btn btn-primary";
+    document.getElementById('cancel-btn').classList.add('d-none');
+}
+</script>
+{% endblock %}
