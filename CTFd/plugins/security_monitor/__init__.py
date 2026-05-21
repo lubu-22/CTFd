@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify
+import csv
+import io
+from flask import Blueprint, render_template, request, jsonify, Response
 from functools import wraps
 from CTFd.models import db, Submissions, Solves, Teams, Challenges, Users
 from CTFd.utils.decorators import admins_only
@@ -9,7 +11,7 @@ class SecurityAlerts(db.Model):
     __tablename__ = "security_alerts"
     id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id', ondelete='CASCADE'))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True) # New user track column
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenges.id', ondelete='CASCADE'), nullable=True)
     alert_type = db.Column(db.String(64))
     details = db.Column(db.Text)
@@ -34,7 +36,6 @@ def load(app):
     with app.app_context():
         db.create_all()
         
-        # Schema Migrations Layer: Automatically inject user tracking keys into old db setups
         try:
             db.session.execute(db.text("ALTER TABLE security_alerts ADD COLUMN user_id INTEGER NULL;"))
             db.session.commit()
@@ -143,7 +144,6 @@ def load(app):
 
                     if match_count >= BRUTE_FORCE_LIMIT:
                         latest_submission_time = subs_in_window[-1].date
-                        # Capture which specific user triggered the threshold breach
                         triggering_sub = subs_in_window[-1]
                         details_text = f'Classroom alert: Team submitted {match_count} or more distinct incorrect flags within a 2-minute window.'
                         
@@ -161,7 +161,7 @@ def load(app):
                                 alert_type='Brute-Force', 
                                 details=details_text, 
                                 timestamp=latest_submission_time,
-                                user_id=triggering_sub.user_id # Log specific user
+                                user_id=triggering_sub.user_id
                             )
                             db.session.add(db_alert)
                             db.session.commit()
@@ -191,12 +191,11 @@ def load(app):
                                     alert_type='Flag Leak Suspect', 
                                     details=details_text, 
                                     timestamp=solve_entry.date,
-                                    user_id=solve_entry.user_id # Log specific user
+                                    user_id=solve_entry.user_id
                                 )
                                 db.session.add(db_leak)
                                 db.session.commit()
 
-        # FIXED: Added native query connection to Users model table schema
         alerts = db.session.query(
             SecurityAlerts.id, SecurityAlerts.alert_type, SecurityAlerts.details, SecurityAlerts.timestamp,
             Teams.name.label('team_name'), Users.name.label('user_name'), Challenges.name.label('challenge_name')
@@ -206,6 +205,42 @@ def load(app):
          .order_by(SecurityAlerts.timestamp.desc()).all()
 
         return render_template('admin_security.html', alerts=alerts)
+
+    # --- NEW: BACKEND CSV LOG GENERATOR ENDPOINT ---
+    @plugin_bp.route('/admin/security/export/csv', methods=['GET'])
+    @admins_only
+    def admin_security_export_csv():
+        alerts = db.session.query(
+            SecurityAlerts.timestamp, SecurityAlerts.alert_type,
+            Teams.name.label('team_name'), Users.name.label('user_name'),
+            Challenges.name.label('challenge_name'), SecurityAlerts.details
+        ).join(Teams, Teams.id == SecurityAlerts.team_id)\
+         .outerjoin(Users, Users.id == SecurityAlerts.user_id)\
+         .outerjoin(Challenges, Challenges.id == SecurityAlerts.challenge_id)\
+         .order_by(SecurityAlerts.timestamp.desc()).all()
+
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        
+        writer.writerow(['Timestamp (UTC)', 'Alert Type', 'Team Name', 'Player Name', 'Challenge Name', 'Event Details'])
+        
+        for a in alerts:
+            writer.writerow([
+                a.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                a.alert_type,
+                a.team_name,
+                a.user_name if a.user_name else 'N/A',
+                a.challenge_name if a.challenge_name else 'N/A',
+                a.details
+            ])
+        
+        output.seek(0)
+        
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=classroom_security_report.csv"}
+        )
 
     app.register_blueprint(plugin_bp)
 
