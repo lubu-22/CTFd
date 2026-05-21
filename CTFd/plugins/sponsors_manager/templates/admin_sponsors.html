@@ -1,80 +1,121 @@
 {% extends "admin/base.html" %}
 
 {% block content %}
-<div class="jumbotron">
+<div class="jumbotron py-4 mb-4" style="background: var(--background); border-bottom: 1px solid rgba(0,0,0,0.08);">
     <div class="container">
-        <h1>Sponsors Management</h1>
+        <h1 class="my-0"><i class="fas fa-handshake mr-2 text-primary"></i> Sponsors Management</h1>
+        <p class="text-muted mb-0 mt-1">Use the arrow buttons to prioritize layout placement orders across your landing portal.</p>
     </div>
 </div>
+
 <div class="container">
     <div class="row">
-        <div class="col-md-5">
-            <h3 id="form-title">Add New Sponsor</h3>
-            <!-- Added enctype attribute to allow file processing -->
-            <form method="POST" id="sponsor-form" enctype="multipart/form-data">
-                <input type="hidden" name="nonce" value="{{ Session.nonce }}">
-                <input type="hidden" name="action" id="form-action" value="create">
-                <input type="hidden" name="id" id="sponsor-id" value="">
-                
-                <div class="form-group mb-2">
-                    <label>Sponsor Name</label>
-                    <input type="text" name="name" id="input-name" class="form-control" required>
-                </div>
-                <div class="form-group mb-2">
-                    <label>Website Link</label>
-                    <input type="url" name="link" id="input-link" class="form-control" placeholder="https://example.com" required>
-                </div>
-                <div class="form-group mb-2">
-                    <label id="file-label">Sponsor Logo File</label>
-                    <!-- Changed from plain text input to a native file picker -->
-                    <input type="file" name="image_file" id="input-file" class="form-control" accept="image/*" required>
-                    <small id="file-help" class="form-text text-muted d-none">Leave empty to keep current logo.</small>
-                </div>
-                <div class="form-group mb-3">
-                    <label>Short Description</label>
-                    <textarea name="description" id="input-desc" class="form-control" rows="3" required></textarea>
-                </div>
-                <button type="submit" id="submit-btn" class="btn btn-primary">Save Sponsor</button>
-                <button type="button" id="cancel-btn" class="btn btn-secondary d-none" onclick="resetForm()">Cancel Edit</button>
-            </form>
+        <!-- Add/Edit Column Form (Left side) -->
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm mb-4" style="border-radius: 12px;">
+                <h4 id="form-title" class="mb-3 font-weight-bold text-dark">Add New Sponsor</h4>
+                <form method="POST" id="sponsor-form" enctype="multipart/form-data">
+                    <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                    <input type="hidden" name="action" id="form-action" value="create">
+                    <input type="hidden" name="id" id="sponsor-id" value="">
+                    
+                    <div class="form-group mb-2">
+                        <label class="font-weight-bold small text-muted text-uppercase mb-1">Sponsor Name</label>
+                        <input type="text" name="name" id="input-name" class="form-control" placeholder="e.g., Acme Corp" required>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label class="font-weight-bold small text-muted text-uppercase mb-1">Website Link</label>
+                        <input type="url" name="link" id="input-link" class="form-control" placeholder="https://example.com" required>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label id="file-label" class="font-weight-bold small text-muted text-uppercase mb-1">Sponsor Logo File</label>
+                        <input type="file" name="image_file" id="input-file" class="form-control-file border p-1 rounded w-100" accept="image/*" required>
+                        <small id="file-help" class="form-text text-muted d-none">Leave empty to preserve existing logo.</small>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold small text-muted text-uppercase mb-1">Short Description</label>
+                        <textarea name="description" id="input-desc" class="form-control" rows="3" placeholder="Provide a brief summary profile..." required></textarea>
+                    </div>
+                    <button type="submit" id="submit-btn" class="btn btn-primary w-100 font-weight-bold">Save Sponsor</button>
+                    <button type="button" id="cancel-btn" class="btn btn-outline-secondary w-100 mt-2 d-none" onclick="resetForm()">Cancel Edit</button>
+                </form>
+            </div>
         </div>
-        <div class="col-md-7">
-            <h3>Current Active Sponsors</h3>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Logo</th>
-                        <th>Name</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sponsor in sponsors %}
-                    <tr>
-                        <td><img src="{{ sponsor.image }}" height="30"></td>
-                        <td><strong>{{ sponsor.name }}</strong></td>
-                        <td>
-                            <button type="button" class="btn btn-info btn-sm text-white" 
-                                    onclick="editSponsor('{{ sponsor.id }}', '{{ sponsor.name | escape }}', '{{ sponsor.link | escape }}', '{{ sponsor.description | escape }}')">
-                                Edit
+
+        <!-- Stable Navigation Arrow Management Grid Column (Right side) -->
+        <div class="col-md-8">
+            <h4 class="mb-3 font-weight-bold text-dark">Active Sponsors Display Sequence</h4>
+            <div id="sortable-sponsors-list" class="d-flex flex-column" style="gap: 8px;">
+                {% for sponsor in sponsors %}
+                <div class="card shadow-sm border-0 mb-2 p-2" style="border-radius: 10px; background: var(--card-bg, #ffffff); border: 1px solid rgba(0,0,0,0.05) !important;">
+                    <div class="d-flex align-items-center justify-content-between w-100">
+                        
+                        <!-- Compact Arrow Button Groups with Jinja-based boundary blackout protections -->
+                        <div class="d-flex flex-column justify-content-center mr-3 rounded border bg-light overflow-hidden" style="width: 28px;">
+                            <!-- Shift Up Button Trigger -->
+                            <form method="POST" action="/admin/sponsors/up/{{ sponsor.id }}" class="m-0 text-center border-bottom">
+                                <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                                <button type="{% if loop.first %}button{% else %}submit{% endif %}" 
+                                        class="btn btn-link btn-sm text-dark p-1 d-block w-100 rounded-0" 
+                                        style="font-size: 0.75rem; {% if loop.first %}background: #212529 !important; color: #ffffff !important; opacity: 0.25; cursor: not-allowed !important; box-shadow: none;{% endif %}" 
+                                        title="Move Up">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </form>
+                            <!-- Shift Down Button Trigger -->
+                            <form method="POST" action="/admin/sponsors/down/{{ sponsor.id }}" class="m-0 text-center">
+                                <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                                <button type="{% if loop.last %}button{% else %}submit{% endif %}" 
+                                        class="btn btn-link btn-sm text-dark p-1 d-block w-100 rounded-0" 
+                                        style="font-size: 0.75rem; {% if loop.last %}background : #212529 !important; color: #ffffff !important; opacity: 0.25; cursor: not-allowed !important; box-shadow: none;{% endif %}" 
+                                        title="Move Down">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Logo Content Block -->
+                        <div class="mr-3 border rounded p-1 bg-white d-flex align-items-center justify-content-center" style="width: 70px; height: 50px;">
+                            <img src="{{ sponsor.image }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        </div>
+                        
+                        <!-- Aligned #Number Badge and Title Name Context -->
+                        <div class="flex-grow-1 min-width-0 d-flex align-items-center">
+                            <span class="badge badge-secondary px-2 py-1 font-weight-bold mr-2" style="font-size: 0.85rem; border-radius: 6px; line-height: 1;">#{{ loop.index }}</span>
+                            <h5 class="mb-0 font-weight-bold text-truncate" style="max-width: 250px; line-height: 1; margin-top: 2px;">{{ sponsor.name }}</h5>
+                        </div>
+                        
+                        <!-- Modify & Erase Control Triggers -->
+                        <div class="text-right pl-2">
+                            <button type="button" class="btn btn-outline-info btn-sm font-weight-bold mr-1" 
+                                    onclick="editSponsor('{{ sponsor.id }}', '{{ sponsor.name | escape }}', '{{ sponsor.sort_order }}', '{{ sponsor.link | escape }}', '{{ sponsor.description | escape }}')">
+                                <i class="fas fa-edit"></i> Edit
                             </button>
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="nonce" value="{{ Session.nonce }}">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id" value="{{ sponsor.id }}">
-                                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                <button type="submit" class="btn btn-outline-danger btn-sm font-weight-bold">
+                                    <i class="fas fa-trash-alt"></i> Delete
+                                </button>
                             </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </div>
+
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-5 border rounded" style="background: rgba(0,0,0,0.02); border-style: dashed !important; border-radius: 12px;">
+                    <i class="fas fa-folder-open fa-2x mb-2 text-muted" style="opacity: 0.4;"></i>
+                    <p class="mb-0">No active event partners compiled yet.</p>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-function editSponsor(id, name, link, description) {
+function editSponsor(id, name, order, link, description) {
     document.getElementById('form-title').innerText = "Edit Sponsor: " + name;
     document.getElementById('form-action').value = "update";
     document.getElementById('sponsor-id').value = id;
@@ -83,12 +124,16 @@ function editSponsor(id, name, link, description) {
     document.getElementById('input-link').value = link;
     document.getElementById('input-desc').value = description;
     
-    // When editing, file choice is optional (they might want to keep the old logo)
+    // FIXED: Removals of strict required input constraints to preserve original logos during shifts
     document.getElementById('input-file').removeAttribute('required');
-    document.getElementById('file-help').classList.remove('d-none');
     
-    document.getElementById('submit-btn').innerText = "Update Sponsor";
-    document.getElementById('submit-btn').className = "btn btn-success";
+    // FIXED: Provides clean contextual update helpers to the user interface
+    document.getElementById('file-label').innerHTML = 'Update Logo <span class="badge badge-warning">Optional</span>';
+    document.getElementById('file-help').classList.remove('d-none');
+    document.getElementById('file-help').innerText = "A logo is already saved. Only select a new file if you want to replace it.";
+    
+    document.getElementById('submit-btn').innerText = "Update Changes";
+    document.getElementById('submit-btn').className = "btn btn-success w-100 font-weight-bold";
     document.getElementById('cancel-btn').classList.remove('d-none');
 }
 
@@ -96,15 +141,14 @@ function resetForm() {
     document.getElementById('form-title').innerText = "Add New Sponsor";
     document.getElementById('form-action').value = "create";
     document.getElementById('sponsor-id').value = "";
-    
     document.getElementById('sponsor-form').reset();
     
-    // Reset file requirements for a new entry
     document.getElementById('input-file').setAttribute('required', 'required');
+    document.getElementById('file-label').innerHTML = 'Sponsor Logo File';
     document.getElementById('file-help').classList.add('d-none');
     
     document.getElementById('submit-btn').innerText = "Save Sponsor";
-    document.getElementById('submit-btn').className = "btn btn-primary";
+    document.getElementById('submit-btn').className = "btn btn-primary w-100 font-weight-bold";
     document.getElementById('cancel-btn').classList.add('d-none');
 }
 </script>

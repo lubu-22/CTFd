@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for
-from CTFd.models import db
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify
+from CTFd.models import db, Pages
 from CTFd.utils.decorators import admins_only
 from CTFd.utils.uploads import upload_file
 
@@ -10,16 +10,49 @@ class Sponsors(db.Model):
     link = db.Column(db.String(512))
     image = db.Column(db.String(512))
     description = db.Column(db.Text)
+    sort_order = db.Column(db.Integer, default=0)
 
-    def __init__(self, name, link, image, description):
+    def __init__(self, name, link, image, description, sort_order=0):
         self.name = name
         self.link = link
         self.image = image
         self.description = description
+        self.sort_order = sort_order
 
 def load(app):
     with app.app_context():
         db.create_all()
+
+        # Schema Migration Safety Check
+        try:
+            db.session.execute(db.text("ALTER TABLE sponsors ADD COLUMN sort_order INTEGER DEFAULT 0;"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        # 1. Auto-create mandatory index page route if missing
+        existing_page = Pages.query.filter_by(route="index").first()
+        if not existing_page:
+            new_index_page = Pages(
+                title="Home",
+                route="index",
+                content="", 
+                draft=False, hidden=False, auth_required=False
+            )
+            db.session.add(new_index_page)
+            db.session.commit()
+
+        # 2. Auto-seed placeholder sponsor data on fresh clones
+        if Sponsors.query.count() == 0:
+            default_sponsor = Sponsors(
+                name="University Lab Partner",
+                link="https://example.com",
+                image="/themes/core/static/img/logo.png",
+                description="Default classroom partner. Customize or replace this placeholder within the admin sponsors extensions tab.",
+                sort_order=1
+            )
+            db.session.add(default_sponsor)
+            db.session.commit()
 
     plugin_bp = Blueprint('sponsors_manager', __name__, template_folder='templates')
 
@@ -42,6 +75,7 @@ def load(app):
                     sponsor.link = request.form.get('link')
                     sponsor.description = request.form.get('description')
                     
+                    # FIXED: Correctly parses and saves image file uploads during edits
                     file = request.files.get('image_file')
                     if file and file.filename != '':
                         file_obj = upload_file(file=file, challenge_id=None)
@@ -60,18 +94,48 @@ def load(app):
                     file_obj = upload_file(file=file, challenge_id=None)
                     image_path = f"/files/{file_obj.location}"
                 
-                new_sponsor = Sponsors(name=name, link=link, image=image_path, description=description)
+                max_order = db.session.query(db.func.max(Sponsors.sort_order)).scalar() or 0
+                new_sponsor = Sponsors(name=name, link=link, image=image_path, description=description, sort_order=max_order + 1)
                 db.session.add(new_sponsor)
                 db.session.commit()
                 
             return redirect(url_for('sponsors_manager.admin_sponsors'))
 
-        all_sponsors = Sponsors.query.all()
+        all_sponsors = Sponsors.query.order_by(Sponsors.sort_order.asc(), Sponsors.id.asc()).all()
         return render_template('admin_sponsors.html', sponsors=all_sponsors)
+
+    # BACKEND REORDER ROUTE: SHIFT SPONSOR UP
+    @plugin_bp.route('/admin/sponsors/up/<int:sponsor_id>', methods=['POST'])
+    @admins_only
+    def admin_sponsors_up(sponsor_id):
+        current_sponsor = Sponsors.query.get_or_404(sponsor_id)
+        previous_sponsor = Sponsors.query.filter(Sponsors.sort_order < current_sponsor.sort_order)\
+                                         .order_by(Sponsors.sort_order.desc()).first()
+        if previous_sponsor:
+            temp_order = current_sponsor.sort_order
+            current_sponsor.sort_order = previous_sponsor.sort_order
+            previous_sponsor.sort_order = temp_order
+            db.session.commit()
+            
+        return redirect(url_for('sponsors_manager.admin_sponsors'))
+
+    # BACKEND REORDER ROUTE: SHIFT SPONSOR DOWN
+    @plugin_bp.route('/admin/sponsors/down/<int:sponsor_id>', methods=['POST'])
+    @admins_only
+    def admin_sponsors_down(sponsor_id):
+        current_sponsor = Sponsors.query.get_or_404(sponsor_id)
+        next_sponsor = Sponsors.query.filter(Sponsors.sort_order > current_sponsor.sort_order)\
+                                     .order_by(Sponsors.sort_order.asc()).first()
+        if next_sponsor:
+            temp_order = current_sponsor.sort_order
+            current_sponsor.sort_order = next_sponsor.sort_order
+            next_sponsor.sort_order = temp_order
+            db.session.commit()
+            
+        return redirect(url_for('sponsors_manager.admin_sponsors'))
 
     app.register_blueprint(plugin_bp)
 
-    # Automatically hooks the navigation menu into the admin view pipeline
     @app.after_request
     def inject_admin_nav(response):
         if response.mimetype == "text/html":
@@ -79,7 +143,6 @@ def load(app):
             target_marker = '<ul class="navbar-nav mr-auto">'
             
             if target_marker in html_content:
-                # Creates a clean, styled dropdown box right on your navbar line
                 dropdown_markup = (
                     f'{target_marker}\n'
                     f'            <li class="nav-item dropdown">\n'
@@ -97,4 +160,4 @@ def load(app):
 
     @app.context_processor
     def inject_sponsors():
-        return dict(dynamic_sponsors=Sponsors.query.all())
+        return dict(dynamic_sponsors=Sponsors.query.order_by(Sponsors.sort_order.asc()).all())
