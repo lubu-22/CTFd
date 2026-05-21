@@ -1,128 +1,139 @@
 {% extends "base.html" %}
 
 {% block content %}
+  <!-- ==================== SAFE REQUEST-PATH BLOCK INJECTION ==================== -->
+  {% if request.path == "/" %}
   <style>
-/* ==================== LIGHT MODE (DEFAULT) ==================== */
-.sponsors-section {
-  padding: 10px 20px;
-  text-align: center;
-}
+    /* ==================== LIGHT MODE (DEFAULT) ==================== */
+    .sponsors-section {
+      padding: 10px 20px;
+      text-align: center;
+    }
 
-.sponsors-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
+    .sponsors-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
 
-.sponsors-subtitle {
-  color: #6c757d;
-  margin-bottom: 48px;
-  font-size: 1rem;
-}
+    .sponsors-subtitle {
+      color: #6c757d;
+      margin-bottom: 48px;
+      font-size: 1rem;
+    }
 
-.sponsors-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 28px;
-}
+    .sponsors-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 28px;
+    }
 
-.sponsor-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-decoration: none;
-  color: inherit;
-  padding: 28px 24px;
-  border: 1px solid #e0e0e0;
-  border-radius: 16px;
-  background: #ffffff;
-  width: 260px;
-  transition: box-shadow 0.2s, transform 0.2s;
-}
+    .sponsor-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      color: inherit;
+      padding: 28px 24px;
+      border: 1px solid #e0e0e0;
+      border-radius: 16px;
+      background: #ffffff;
+      width: 260px;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
 
-.sponsor-card:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-  text-decoration: none;
-  color: inherit;
-}
+    .sponsor-card:hover {
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+      transform: translateY(-4px);
+      text-decoration: none;
+      color: inherit;
+    }
 
-.sponsor-card img {
-  max-height: 70px;
-  max-width: 160px;
-  object-fit: contain;
-  margin-bottom: 16px;
-  filter: grayscale(30%);
-  transition: filter 0.2s;
-  padding: 4px;
-  border-radius: 4px;
-}
+    .sponsor-card img {
+      max-height: 70px;
+      max-width: 160px;
+      object-fit: contain;
+      margin-bottom: 16px;
+      filter: grayscale(30%);
+      transition: filter 0.2s;
+      padding: 4px;
+      border-radius: 4px;
+    }
 
-.sponsor-card:hover img {
-  filter: grayscale(0%);
-}
+    .sponsor-card:hover img {
+      filter: grayscale(0%);
+    }
 
-.sponsor-name {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #1a1a1a;
-}
+    .sponsor-name {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #1a1a1a;
+    }
 
-.sponsor-desc {
-  font-size: 0.85rem;
-  color: #6c757d;
-  margin: 0;
-  line-height: 1.5;
-}
+    .sponsor-desc {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin: 0;
+      line-height: 1.5;
+    }
 
-/* ==================== DARK MODE OVERRIDES ==================== */
-[data-bs-theme="dark"] .sponsor-card {
-  background: #1e2530;
-  border-color: #343a40;
-}
+    /* ==================== DARK MODE OVERRIDES ==================== */
+    [data-bs-theme="dark"] .sponsor-card {
+      background: #1e2530;
+      border-color: #343a40;
+    }
 
-[data-bs-theme="dark"] .sponsor-card:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-}
+    [data-bs-theme="dark"] .sponsor-card:hover {
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    }
 
-[data-bs-theme="dark"] .sponsor-name {
-  color: #ffffff;
-}
+    [data-bs-theme="dark"] .sponsor-name {
+      color: #ffffff;
+    }
 
-[data-bs-theme="dark"] .sponsors-subtitle,
-[data-bs-theme="dark"] .sponsor-desc {
-  color: #a0aec0;
-}
+    [data-bs-theme="dark"] .sponsors-subtitle,
+    [data-bs-theme="dark"] .sponsor-desc {
+      color: #a0aec0;
+    }
 
-/* Optional: Ensures dark/transparent logos stay readable in dark mode */
-[data-bs-theme="dark"] .sponsor-card img {
-  background-color: #ffffff; 
-}
-</style>
+    [data-bs-theme="dark"] .sponsor-card img {
+      background-color: #ffffff; 
+    }
+  </style>
 
-<div class="container">
-  <div class="col-12">
-    <div class="sponsors-section">
-      <h2 class="sponsors-title">Our Sponsors</h2>
-      <p class="sponsors-subtitle">This event is made possible by the generous support of our sponsors</p>
-      <div class="sponsors-grid">
-  {% for sponsor in dynamic_sponsors %}
-  <a href="{{ sponsor.link }}" class="sponsor-card" target="_blank">
-    <img src="{{ sponsor.image }}" alt="{{ sponsor.name }}" />
-    <h4 class="sponsor-name">{{ sponsor.name }}</h4>
-    <p class="sponsor-desc">{{ sponsor.description }}</p>
-  </a>
-  {% else %}
-  <p class="text-muted text-center w-100">No sponsors added yet.</p>
-  {% endfor %}
-</div>
-
+  <div class="container mb-5">
+    <div class="col-12">
+      <div class="sponsors-section">
+        <h2 class="sponsors-title">Our Sponsors</h2>
+        <p class="sponsors-subtitle">This event is made possible by the generous support of our sponsors</p>
+        <div class="sponsors-grid">
+          {% for sponsor in dynamic_sponsors %}
+          <a href="{{ sponsor.link }}" class="sponsor-card" target="_blank">
+            <img src="{{ sponsor.image }}" alt="{{ sponsor.name }}" />
+            <h4 class="sponsor-name">{{ sponsor.name }}</h4>
+            <p class="sponsor-desc">{{ sponsor.description }}</p>
+          </a>
+          {% else %}
+          <p class="text-muted text-center w-100">No sponsors added yet.</p>
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </div>
-</div>
+  {% endif %}
+  <!-- ==================== END OF SAFE INJECTION BLOCK ==================== -->
 
+  <div class="container">
+    <div class="row pt-5">
+      <div class="col-md-12">
+        {% if page and page.content %}
+          {{ page.content | safe }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
