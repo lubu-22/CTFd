@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from functools import wraps
-from CTFd.models import db, Submissions, Solves, Teams, Challenges
+from CTFd.models import db, Submissions, Solves, Teams, Challenges, Users
 from CTFd.utils.decorators import admins_only
 from CTFd.utils.user import get_current_user
 import datetime
@@ -9,17 +9,19 @@ class SecurityAlerts(db.Model):
     __tablename__ = "security_alerts"
     id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id', ondelete='CASCADE'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True) # New user track column
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenges.id', ondelete='CASCADE'), nullable=True)
     alert_type = db.Column(db.String(64))
     details = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-    def __init__(self, team_id, challenge_id, alert_type, details, timestamp):
+    def __init__(self, team_id, challenge_id, alert_type, details, timestamp, user_id=None):
         self.team_id = team_id
         self.challenge_id = challenge_id
         self.alert_type = alert_type
         self.details = details
         self.timestamp = timestamp
+        self.user_id = user_id
 
 class ClassroomOpenLogs(db.Model):
     __tablename__ = "classroom_open_logs"
@@ -31,6 +33,13 @@ class ClassroomOpenLogs(db.Model):
 def load(app):
     with app.app_context():
         db.create_all()
+        
+        # Schema Migrations Layer: Automatically inject user tracking keys into old db setups
+        try:
+            db.session.execute(db.text("ALTER TABLE security_alerts ADD COLUMN user_id INTEGER NULL;"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     plugin_bp = Blueprint('security_monitor', __name__, template_folder='templates')
 
@@ -126,7 +135,6 @@ def load(app):
                 for i in range(len(wrong_subs)):
                     window_start = wrong_subs[i].date
                     
-                    # Skip tracking if this specific submission was already captured in a previous alert window
                     if last_logged_alert_time and window_start <= last_logged_alert_time:
                         continue
 
@@ -135,6 +143,8 @@ def load(app):
 
                     if match_count >= BRUTE_FORCE_LIMIT:
                         latest_submission_time = subs_in_window[-1].date
+                        # Capture which specific user triggered the threshold breach
+                        triggering_sub = subs_in_window[-1]
                         details_text = f'Classroom alert: Team submitted {match_count} or more distinct incorrect flags within a 2-minute window.'
                         
                         existing_alert = SecurityAlerts.query.filter_by(
@@ -150,15 +160,14 @@ def load(app):
                                 challenge_id=chal.id, 
                                 alert_type='Brute-Force', 
                                 details=details_text, 
-                                timestamp=latest_submission_time
+                                timestamp=latest_submission_time,
+                                user_id=triggering_sub.user_id # Log specific user
                             )
                             db.session.add(db_alert)
                             db.session.commit()
                         
-                        # Update the timeline bookmark to allow the scanner to catch subsequent waves
                         last_logged_alert_time = latest_submission_time
 
-                # B. EVALUATE ANSWER-SHARING LEAKS
                 solve_entry = Solves.query.filter_by(team_id=team.id, challenge_id=chal.id).first()
                 if solve_entry:
                     open_record = ClassroomOpenLogs.query.filter_by(team_id=team.id, challenge_id=chal.id).first()
@@ -181,15 +190,18 @@ def load(app):
                                     challenge_id=chal.id, 
                                     alert_type='Flag Leak Suspect', 
                                     details=details_text, 
-                                    timestamp=solve_entry.date
+                                    timestamp=solve_entry.date,
+                                    user_id=solve_entry.user_id # Log specific user
                                 )
                                 db.session.add(db_leak)
                                 db.session.commit()
 
+        # FIXED: Added native query connection to Users model table schema
         alerts = db.session.query(
             SecurityAlerts.id, SecurityAlerts.alert_type, SecurityAlerts.details, SecurityAlerts.timestamp,
-            Teams.name.label('team_name'), Challenges.name.label('challenge_name')
+            Teams.name.label('team_name'), Users.name.label('user_name'), Challenges.name.label('challenge_name')
         ).join(Teams, Teams.id == SecurityAlerts.team_id)\
+         .outerjoin(Users, Users.id == SecurityAlerts.user_id)\
          .outerjoin(Challenges, Challenges.id == SecurityAlerts.challenge_id)\
          .order_by(SecurityAlerts.timestamp.desc()).all()
 
@@ -202,9 +214,7 @@ def load(app):
         if response.mimetype == "text/html":
             html_content = response.get_data(as_text=True)
             target_marker = 'id="custom-extensions-menu">'
-            
             if target_marker in html_content:
-                # Appends the security sub-link item inside the drop container layout panel
                 new_link = f'{target_marker}\n                    <a class="dropdown-item" href="/admin/security"><i class="fas fa-shield-alt mr-2"></i>Security Monitor</a>'
                 html_content = html_content.replace(target_marker, new_link, 1)
                 response.set_data(html_content)
