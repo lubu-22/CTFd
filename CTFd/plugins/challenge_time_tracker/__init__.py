@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request
+import csv
+import io
+from flask import Blueprint, render_template, request, Response
 from CTFd.models import db, Solves, Challenges, Teams, Users
 from CTFd.utils.decorators import admins_only
 from CTFd.utils.user import get_current_user
@@ -8,7 +10,7 @@ class ChallengeTimeTrack(db.Model):
     __tablename__ = "challenge_time_track"
     id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id', ondelete='CASCADE'))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True) # New user track column
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenges.id', ondelete='CASCADE'))
     first_opened = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     solved_at = db.Column(db.DateTime, nullable=True)
@@ -23,7 +25,7 @@ class ChallengeClicks(db.Model):
     __tablename__ = "challenge_clicks"
     id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id', ondelete='CASCADE'))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True) # New user click track column
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenges.id', ondelete='CASCADE'))
     opened_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -36,7 +38,6 @@ def load(app):
     with app.app_context():
         db.create_all()
         
-        # Schema Migrations Layer: Automatically inject user tracking keys into old db setups
         try:
             db.session.execute(db.text("ALTER TABLE challenge_clicks ADD COLUMN user_id INTEGER NULL;"))
             db.session.execute(db.text("ALTER TABLE challenge_time_track ADD COLUMN user_id INTEGER NULL;"))
@@ -53,7 +54,6 @@ def load(app):
             if user and user.team_id:
                 try:
                     chal_id = int(request.path.split('/')[-1])
-                    # FIXED: Now logs user.id alongside team_id
                     click_entry = ChallengeClicks(team_id=user.team_id, challenge_id=chal_id, user_id=user.id)
                     db.session.add(click_entry)
                     db.session.commit()
@@ -69,7 +69,6 @@ def load(app):
         MAX_SESSION_WINDOW = 900 
 
         for team in all_teams:
-            # Group timeline analysis by user to maintain individual focus streams
             team_users = db.session.query(Users).filter(Users.team_id == team.id).all()
             
             for user_obj in team_users:
@@ -78,7 +77,6 @@ def load(app):
                     continue
 
                 for chal in all_challenges:
-                    # In CTFd, solves are recorded at the team layer or user layer depending on mode
                     solve_entry = Solves.query.filter_by(team_id=team.id, challenge_id=chal.id).first()
                     if not solve_entry:
                         continue 
@@ -101,20 +99,18 @@ def load(app):
                         if delta > 0:
                             total_active_seconds += int(delta)
 
-                    # FIXED: Saves separate records per user to isolate task efficiency metrics
                     existing_record = ChallengeTimeTrack.query.filter_by(team_id=team.id, user_id=user_obj.id, challenge_id=chal.id).first()
                     if existing_record:
                         existing_record.solved_at = solve_entry.date
                         existing_record.duration_seconds = total_active_seconds
                     else:
                         new_track = ChallengeTimeTrack(team_id=team.id, challenge_id=chal.id, user_id=user_obj.id)
-                        new_track.first_opened = chal_clicks[0].opened_at
+                        new_track.first_opened = chal_clicks.opened_at
                         new_track.solved_at = solve_entry.date
                         new_track.duration_seconds = total_active_seconds
                         db.session.add(new_track)
                     db.session.commit()
 
-        # FIXED: Pulls User.name alongside Team.name to build the dashboard row entries
         report_data = db.session.query(
             Teams.name.label('team_name'),
             Users.name.label('user_name'),
@@ -128,6 +124,45 @@ def load(app):
          .order_by(ChallengeTimeTrack.duration_seconds.asc()).all()
 
         return render_template('admin_time_tracking.html', records=report_data)
+
+    # --- NEW: BACKEND EXCEL CSV TIME TRACKING EXPORT ROUTE ---
+    @plugin_bp.route('/admin/time-tracking/export/csv', methods=['GET'])
+    @admins_only
+    def admin_time_tracking_export_csv():
+        report_data = db.session.query(
+            Teams.name.label('team_name'),
+            Users.name.label('user_name'),
+            Challenges.name.label('challenge_name'),
+            ChallengeTimeTrack.first_opened,
+            ChallengeTimeTrack.solved_at,
+            ChallengeTimeTrack.duration_seconds
+        ).join(Teams, Teams.id == ChallengeTimeTrack.team_id)\
+         .join(Users, Users.id == ChallengeTimeTrack.user_id)\
+         .join(Challenges, Challenges.id == ChallengeTimeTrack.challenge_id)\
+         .order_by(ChallengeTimeTrack.duration_seconds.asc()).all()
+
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        
+        writer.writerow(['Team Name', 'Player Name', 'Challenge Name', 'First Opened At (UTC)', 'Solved At (UTC)', 'Duration (Seconds)'])
+        
+        for r in report_data:
+            writer.writerow([
+                r.team_name,
+                r.user_name,
+                r.challenge_name,
+                r.first_opened.strftime('%Y-%m-%d %H:%M:%S'),
+                r.solved_at.strftime('%Y-%m-%d %H:%M:%S'),
+                r.duration_seconds
+            ])
+        
+        output.seek(0)
+        
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=classroom_time_tracking_report.csv"}
+        )
 
     app.register_blueprint(plugin_bp)
 

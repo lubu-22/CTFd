@@ -1,6 +1,38 @@
 {% extends "admin/base.html" %}
 
 {% block content %}
+<!-- Print-friendly formatting stylesheet layer overrides -->
+<style>
+@media print {
+    .navbar, .jumbotron, .btn-group, .btn, #extensionsDropdown, footer {
+        display: none !important;
+    }
+    body, .container {
+        background: #fff !important;
+        color: #000 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    .table th, .table td {
+        border: 1px solid #333 !important;
+        padding: 6px !important;
+        font-size: 0.85rem !important;
+    }
+    .badge {
+        border: 1px solid #666 !important;
+        color: #000 !important;
+        background: none !important;
+        padding: 2px !important;
+    }
+}
+</style>
+
 <div class="jumbotron">
     <div class="container">
         <h1>Challenge Time Tracking</h1>
@@ -9,14 +41,29 @@
 </div>
 
 <div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12 d-flex justify-content-between align-items-center">
+            <h3 class="m-0"><i class="fas fa-clock"></i> Active Focus Logs</h3>
+            
+            <!-- OPTIMIZED TIME METRICS EXPORT UTILITY ACTION GROUP -->
+            <div class="btn-group" role="group">
+                <a href="/admin/time-tracking/export/csv" class="btn btn-outline-success font-weight-bold">
+                    <i class="fas fa-file-excel mr-1"></i> Export Excel CSV
+                </a>
+                <button type="button" class="btn btn-outline-primary font-weight-bold" onclick="window.print();">
+                    <i class="fas fa-file-pdf mr-1"></i> Save as PDF Report
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-12">
-            <h3 class="mb-3"><i class="fas fa-clock"></i> Active Focus Logs</h3>
             <table class="table table-striped table-bordered text-center">
                 <thead class="thead-dark">
                     <tr>
                         <th>Team Name</th>
-                        <th>Player Name</th> <!-- Added Column -->
+                        <th>Player Name</th>
                         <th>Challenge</th>
                         <th>First Opened At</th>
                         <th>Solved At</th>
@@ -27,7 +74,7 @@
                     {% for record in records %}
                     <tr>
                         <td><code>{{ record.team_name }}</code></td>
-                        <td><strong>{{ record.user_name }}</strong></td> <!-- Added Row Field -->
+                        <td><strong>{{ record.user_name }}</strong></td>
                         <td><span class="badge badge-info p-2">{{ record.challenge_name }}</span></td>
                         <td class="utc-time" data-utc="{{ record.first_opened.isoformat() }}Z">{{ record.first_opened }}</td>
                         <td class="utc-time" data-utc="{{ record.solved_at.isoformat() }}Z">{{ record.solved_at }}</td>
