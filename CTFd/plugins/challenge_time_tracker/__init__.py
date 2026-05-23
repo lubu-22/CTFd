@@ -6,6 +6,7 @@ from CTFd.utils.decorators import admins_only
 from CTFd.utils.user import get_current_user
 import datetime
 
+# RESTORED: Local model classes declared back inside the file context
 class ChallengeTimeTrack(db.Model):
     __tablename__ = "challenge_time_track"
     id = db.Column(db.Integer, primary_key=True)
@@ -105,7 +106,7 @@ def load(app):
                         existing_record.duration_seconds = total_active_seconds
                     else:
                         new_track = ChallengeTimeTrack(team_id=team.id, challenge_id=chal.id, user_id=user_obj.id)
-                        new_track.first_opened = chal_clicks.opened_at
+                        new_track.first_opened = chal_clicks[0].opened_at
                         new_track.solved_at = solve_entry.date
                         new_track.duration_seconds = total_active_seconds
                         db.session.add(new_track)
@@ -125,17 +126,12 @@ def load(app):
 
         return render_template('admin_time_tracking.html', records=report_data)
 
-    # --- NEW: BACKEND EXCEL CSV TIME TRACKING EXPORT ROUTE ---
     @plugin_bp.route('/admin/time-tracking/export/csv', methods=['GET'])
     @admins_only
     def admin_time_tracking_export_csv():
         report_data = db.session.query(
-            Teams.name.label('team_name'),
-            Users.name.label('user_name'),
-            Challenges.name.label('challenge_name'),
-            ChallengeTimeTrack.first_opened,
-            ChallengeTimeTrack.solved_at,
-            ChallengeTimeTrack.duration_seconds
+            Teams.name.label('team_name'), Users.name.label('user_name'), Challenges.name.label('challenge_name'),
+            ChallengeTimeTrack.first_opened, ChallengeTimeTrack.solved_at, ChallengeTimeTrack.duration_seconds
         ).join(Teams, Teams.id == ChallengeTimeTrack.team_id)\
          .join(Users, Users.id == ChallengeTimeTrack.user_id)\
          .join(Challenges, Challenges.id == ChallengeTimeTrack.challenge_id)\
@@ -143,26 +139,11 @@ def load(app):
 
         output = io.StringIO()
         writer = csv.writer(output, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        
         writer.writerow(['Team Name', 'Player Name', 'Challenge Name', 'First Opened At (UTC)', 'Solved At (UTC)', 'Duration (Seconds)'])
-        
         for r in report_data:
-            writer.writerow([
-                r.team_name,
-                r.user_name,
-                r.challenge_name,
-                r.first_opened.strftime('%Y-%m-%d %H:%M:%S'),
-                r.solved_at.strftime('%Y-%m-%d %H:%M:%S'),
-                r.duration_seconds
-            ])
-        
+            writer.writerow([r.team_name, r.user_name, r.challenge_name, r.first_opened.strftime('%Y-%m-%d %H:%M:%S'), r.solved_at.strftime('%Y-%m-%d %H:%M:%S'), r.duration_seconds])
         output.seek(0)
-        
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": "attachment; filename=classroom_time_tracking_report.csv"}
-        )
+        return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": "attachment; filename=classroom_time_tracking_report.csv"})
 
     app.register_blueprint(plugin_bp)
 
