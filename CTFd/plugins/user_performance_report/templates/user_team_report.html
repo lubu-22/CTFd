@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* Clean laboratory layout metrics overrides */
+.challenge-badge { 
+    font-size: 0.72rem !important; 
+    margin: 1px !important; 
+    display: inline-block !important; 
+    white-space: normal !important; 
+}
+.table-sm th, .table-sm td {
+    padding: 8px 6px !important;
+    vertical-align: middle !important;
+}
+
+@media print {
+    /* Hard blackout rules to isolate the grading sheet perfectly on PDF */
+    .navbar, .btn, footer, header, #nav-placeholder, .ignore-print { 
+        display: none !important; 
+    }
+    body, .container, .container-fluid { 
+        background: #fff !important; 
+        color: #000 !important; 
+        width: 100% !important; 
+        max-width: 100% !important; 
+        padding: 0 !important; 
+        margin: 0 !important;
+    }
+    .table { 
+        border-collapse: collapse !important; 
+        width: 100% !important; 
+    }
+    .table th, .table td { 
+        border: 1px solid #333 !important; 
+        padding: 5px !important; 
+        font-size: 0.7rem !important; 
+    }
+    .badge {
+        border: 1px solid #666 !important;
+        color: #000 !important;
+        background: none !important;
+    }
+}
+</style>
+
+<div class="container py-4">
+          <!-- TOOLBAR CONTROLS HEADER ROW (FIXED: Added space-between rules to snap the button to the far right edge) -->
+    <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4 ignore-print" style="width: 100% !important; display: flex !important; justify-content: space-between !important;">
+        
+        <!-- Left Section: Group Icon + Title Text blocks aligned cleanly side-by-side -->
+        <div class="d-flex align-items-center">
+            <i class="fas fa-users text-primary" style="font-size: 2.2rem; margin-right: 15px;"></i>
+            <div>
+                <h2 class="font-weight-bold text-white m-0" style="line-height: 1.1; font-size: 1.75rem;">Team Performance Matrix</h2>
+                <p class="text-muted m-0 mt-1" style="font-size: 0.9rem;">
+                    Active workspace analytics metrics for Team: 
+                    <span class="text-white font-weight-bold ml-1">{{ team.name }}</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Section: Snaps perfectly to the right side wall container -->
+        <div>
+            <button type="button" class="btn btn-success font-weight-bold px-4 shadow-sm" onclick="window.print();">
+                <i class="fas fa-file-pdf mr-1"></i> Save Scorecard PDF
+            </button>
+        </div>
+        
+    </div>
+
+
+
+    <!-- MAIN DATA SHEET GRID CONTAINER (FIXED: White card removed completely) -->
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered text-center table-sm m-0">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Teammate Name</th>
+                    <th>Score</th>
+                    <th>Solves</th>
+                    <th>Attempts</th>
+                    <th style="width: 90px;">Efficiency</th>
+                    <th style="width: 160px;">Hints Unlocked</th>
+                    <th style="width: 180px;">Challenges Conquered</th>
+                    <th style="width: 180px;">Failed Attempts Breakdown</th>
+                    <th style="width: 130px;">Currently Stuck On</th>
+                    {% for cat in categories %}
+                    <th class="bg-secondary text-white small font-weight-bold">{{ cat }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in matrix %}
+                <tr>
+                    <td><strong>{{ row.user_name }}</strong></td>
+                    <td><span class="badge badge-primary px-2 py-1" style="font-size: 0.85rem;">{{ row.score }} pts</span></td>
+                    <td>{{ row.solves_count }}</td>
+                    <td>{{ row.submissions_count }}</td>
+                    <td>
+                        <div class="progress" style="height: 16px; position: relative; margin: 0; border: 1px solid #ced4da;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ row.solve_efficiency }}%;"></div>
+                            <small class="font-weight-bold text-dark w-100" style="position: absolute; left: 0; top: 0; line-height: 16px; font-size: 0.65rem;">{{ row.solve_efficiency }}%</small>
+                        </div>
+                    </td>
+                    
+                    <!-- Hint footprint details log column -->
+                    <td class="text-left text-wrap">
+                        {% for h_text in row.hints_used %}
+                        <span class="badge badge-warning challenge-badge font-weight-normal text-dark px-2 py-1 border border-warning" style="background-color: #fff3cd;"><i class="fas fa-lightbulb text-warning mr-1"></i>{{ h_text }}</span>
+                        {% else %}
+                        <span class="text-muted small">No hints used</span>
+                        {% endfor %}
+                    </td>
+                    
+                    <td class="text-left text-wrap">
+                        {% for c_info in row.conquered %}
+                        <span class="badge badge-success challenge-badge font-weight-normal px-2 py-1">{{ c_info }}</span>
+                        {% else %}
+                        <span class="text-muted small">None yet</span>
+                        {% endfor %}
+                    </td>
+
+                    <td class="text-left text-wrap">
+                        {% for f_info in row.failed_breakdown %}
+                        <span class="badge badge-light border challenge-badge font-weight-normal text-dark px-2 py-1" style="background-color: #f8f9fa;"><i class="fas fa-times text-danger mr-1"></i>{{ f_info }}</span>
+                        {% else %}
+                        <span class="text-success small font-weight-bold"><i class="fas fa-star text-success mr-1"></i>Flawless</span>
+                        {% endfor %}
+                    </td>
+
+                    <td class="text-left text-wrap">
+                        {% for s_name in row.stuck %}
+                        <span class="badge badge-danger challenge-badge font-weight-normal px-2 py-1"><i class="fas fa-fire mr-1"></i>{{ s_name }}</span>
+                        {% else %}
+                        <span class="text-muted small">No roadblocks</span>
+                        {% endfor %}
+                    </td>
+
+                    {% for cat in categories %}
+                    <td><span class="font-weight-bold {% if row.categories[cat] > 0 %}text-success{% else %}text-muted{% endif %}">{{ row.categories[cat] }}</span></td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
