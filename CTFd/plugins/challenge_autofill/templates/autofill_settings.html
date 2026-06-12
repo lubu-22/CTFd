@@ -1,0 +1,97 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="jumbotron py-4 mb-4">
+    <div class="container">
+        <h1><i class="fas fa-magic text-primary mr-2"></i> Challenge Autofill Settings</h1>
+        <p class="text-muted mb-0">Configure advanced independent template defaults and state priorities for standard and dynamic challenge forms.</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <form method="POST">
+        <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+        
+        <div class="row">
+            <!-- LEFT PANEL: STANDARD CHALLENGES FORM -->
+            <div class="col-md-6 mb-4">
+                <div class="card p-4 shadow-sm border h-100" style="border-radius: 12px; background-color: #ffffff;">
+                    <h4 class="font-weight-bold text-primary mb-3 border-bottom pb-2">
+                        <i class="fas fa-cube mr-1"></i> Standard Challenge Defaults
+                    </h4>
+                    
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold text-dark">Default Category Name:</label>
+                        <input type="text" name="std_category" class="form-control form-control-sm" value="{{ settings.std_category }}" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold text-dark">Default Point Value:</label>
+                        <input type="number" name="std_value" class="form-control form-control-sm" value="{{ settings.std_value }}" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold text-dark">Default Default State:</label>
+                        <select name="std_state" class="form-control form-control-sm font-weight-bold">
+                            <option value="visible" {% if settings.std_state == 'visible' %}selected{% endif %}>Visible</option>
+                            <option value="hidden" {% if settings.std_state == 'hidden' %}selected{% endif %}>Hidden</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold text-dark">Description Message Template:</label>
+                        <textarea name="std_template" class="form-control form-control-sm" rows="5" style="font-family: monospace; font-size: 0.85rem;">{{ settings.std_template }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: DYNAMIC DECAY CHALLENGES FORM -->
+            <div class="col-md-6 mb-4">
+                <div class="card p-4 shadow-sm border h-100" style="border-radius: 12px; background-color: #ffffff;">
+                    <h4 class="font-weight-bold text-info mb-3 border-bottom pb-2">
+                        <i class="fas fa-bolt mr-1"></i> Dynamic Challenge Defaults
+                    </h4>
+                    
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold text-dark">Default Category Name:</label>
+                        <input type="text" name="dyn_category" class="form-control form-control-sm" value="{{ settings.dyn_category }}" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="font-weight-bold text-dark small">Initial Score:</label>
+                            <input type="number" name="dyn_initial" class="form-control form-control-sm" value="{{ settings.dyn_initial }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="font-weight-bold text-dark small">Minimum Score:</label>
+                            <input type="number" name="dyn_minimum" class="form-control form-control-sm" value="{{ settings.dyn_minimum }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="font-weight-bold text-dark small">Decay Target:</label>
+                            <input type="number" name="dyn_decay" class="form-control form-control-sm" value="{{ settings.dyn_decay }}" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold text-dark">Default Default State:</label>
+                        <select name="dyn_state" class="form-control form-control-sm font-weight-bold">
+                            <option value="hidden" {% if settings.dyn_state == 'hidden' %}selected{% endif %}>Hidden</option>
+                            <option value="visible" {% if settings.dyn_state == 'visible' %}selected{% endif %}>Visible</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold text-dark">Description Message Template:</label>
+                        <textarea name="dyn_template" class="form-control form-control-sm" rows="5" style="font-family: monospace; font-size: 0.85rem;">{{ settings.dyn_template }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUBMIT preferencias -->
+        <button type="submit" class="btn btn-primary font-weight-bold w-100 py-3 shadow" style="border-radius: 10px; font-size: 1.1rem;">
+            <i class="fas fa-save mr-1"></i> Save Split-Mode Autofill Preferences
+        </button>
+    </form>
+</div>
+{% endblock %}
