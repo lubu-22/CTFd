@@ -8,63 +8,42 @@ Welcome to the technical deployment documentation for the custom university comp
 
 This project isolates custom features cleanly inside independent framework plugin modules, ensuring zero bloat or stability degradation across core platform database schemas.
 
-### 1\. ⚙️ Challenge Autofill & Bulk Modifier Hub
+### ⏳ 1. Challenge Focus Session Time Tracker
+* **What it does**: Automatically tracks the exact amount of time a student spends actively working on a challenge by monitoring when they open it and keeping track of their focus windows.
+* **Key feature**: Includes a smart 15-minute idle timeout cap. If a student leaves their desk or walks away from their computer, the system automatically stops the clock to keep the lab time data completely accurate.
 
-Allows organizers to establish dynamic default preferences for fresh exercises and execute segregated mass bulk parameter edits across existing datasets.
+### 🚨 2. Classroom Threat Detection & Security Monitor
+* **What it does**: Acts as an automated security guard for the lab by continuously watching flag submissions for suspicious behavior.
+* **Key feature**: Instantly locks a player out for 3 minutes if they try to brute-force a puzzle (5 wrong guesses in 2 minutes), and automatically logs flag-sharing collusion leaks if a student magically solves a puzzle in under 15 seconds from opening it.
 
-*   **Backend Handler Script:** `CTFd/plugins/challenge_autofill/__init__.py`
-*   **Management Dashboard Form:** `CTFd/plugins/challenge_autofill/templates/autofill_settings.html`
-*   **Key Operations:** Frontend DOM `MutationObserver` injections, `hasattr` relational object mapping bindings to bypass database caching locks.
+### 💡 3. Pedagogical Clue & Hint Usage Analytics
+* **What it does**: Gives instructors a clear window into where students are getting stuck by aggregating and analyzing how hints are being unlocked across the classroom.
+* **Key feature**: Identifies exactly which challenges are causing massive roadblocks and maps out student reliance on help files, showing the exact costs spent and task indexes reviewed.
 
-### 2\. ⏳ Automated Scoreboard Freeze Scheduler
+### ⭐ 4. Challenge Peer Review Feedback
+* **What it does**: Allows students to submit crowdsourced feedback on laboratory exercises by standardizing challenge ratings into clear metrics.
+* **Key feature**: Displays binary Upvote/Downvote approval percentage ratios natively on the dashboard with built-in text-wrapping layout safeties to prevent long comments from breaking the screen.
 
-Provides an automated execution clock window to lock public leaderboards on a specific timeline threshold to maximize event suspense.
+### 📊 5. Student Performance Analytics Matrix
+* **What it does**: Computes individual student laboratory rankings, final scores, error logs, and achievements on a centralized grading sheet.
+* **Key feature**: Features custom, zero-dependency SVG donut charts that render instantly without slowing down browsers, alongside an isolated `/performance/team` student scorecard route that lets teams review their own metrics while keeping peers completely hidden.
 
-*   **Backend Handler Script:** `CTFd/plugins/scoreboard_freeze/__init__.py`
-*   **Scheduler Settings Form:** `CTFd/plugins/scoreboard_freeze/templates/freeze_settings.html`
-*   **Key Operations:** Global runtime lifecycle hook interceptors (`@app.before_request`) performing `calendar.timegm()` universal Epoch comparisons against the MySQL `config` table keys.
+### 📝 6. Administration Audit Log Ledger
+* **What it does**: Provides complete accountability across the platform by maintaining a real-time historical logging table of all modifications executed by admins.
+* **Key feature**: Intercepts server changes (POST/PATCH/PUT/DELETE) across challenges, users, teams, and hints—logging exact timestamps, admin names, workstation IP locations, and form payload data sizes at a single glance.
 
-### 3\. 📝 Administration Audit Log Ledger
+### ⚙️ 7. Challenge Autofill & Bulk Modifier Hub
+* **What it does**: Eliminates boring data entry by automating the challenge creation process and giving organizers a tool to edit multiple puzzles at once.
+* **Key feature**: Autofills template categories ("Lab-Session"), point values ("100"), hidden publishing states, and markdown descriptions on fresh wizard popups. It also lets admins select an entire category folder to change the points or states of multiple existing challenges simultaneously.
 
-Maintains real-time historical tracking entries of all system modifications performed across challenges, users, teams, or clues.
+### ⏰ 8. Automated Scoreboard Freeze Scheduler
+* **What it does**: Builds competition suspense automatically by allowing organizers to schedule an exact date and time in advance for the public scoreboard to freeze.
+* **Key feature**: Works seamlessly with your local PC clock. Once the deadline hits, a background clock checker automatically updates CTFd's internal settings to freeze public leaderboards, ensuring standard users can still earn points privately while removing the risk of an admin forgetting to toggle it manually.
 
-*   **Backend Handler Script:** `CTFd/plugins/admin_activity_logger/__init__.py`
-*   **Audit Console Log View:** `CTFd/plugins/admin_activity_logger/templates/admin_activity_logs.html`
-*   **Key Operations:** Tracking server-side mutation vectors (`POST`, `PATCH`, `PUT`, `DELETE`), client source IP address parsing, payload load character string calculations.
 
-### 4\. 📊 Student Performance Analytics Matrix
+### 9\. 🤝 Dynamic Sponsor Management Engine
 
-Computes individual laboratory execution rankings, solve efficiencies, roadblocks, and clue tracking metrics.
-
-*   **Instructor Grading Console:** `CTFd/plugins/performance_reports/__init__.py`
-*   **Isolated Private Team Scorecard:** `CTFd/plugins/user_performance_report/__init__.py`
-*   **Scorecard Display Form:** `CTFd/plugins/user_performance_report/templates/user_team_report.html`
-*   **Key Operations:** Secure localized student route mapping (`/performance/team`) rendering explicit target team statistics while keeping competitive peers completely masked.
-
-### 5\. 🔍 Classroom Threat Detection & Security Monitor
-
-Flags malicious room profiles, brute-force guessing chains, and immediate teammate flag-leak collusion sharing.
-
-*   **Core Logic Script:** Deployed natively inside target routing channels.
-*   **Audit Incident Desk:** Tracks rapid solved execution timestamps (solve intervals under 15 seconds) and registers a 3-minute lockout penalty box if a player enters 5 wrong flags within a 2-minute cycle.
-
-### 6\. 💡 Pedagogical Clue & Hint Usage Analytics
-
-Aggregates hint usage logs to expose problem files, task roadblocks, and tracking student assistance-reliance levels.
-
-*   **Data Ledger Console:** Displays total costs spent and exact task indexes reviewed.
-
-### 7\. ⭐ Challenge Peer Review Feedbacks
-
-Standardizes laboratory review metrics into readable binary Upvote/Downvote approval ratio calculations with inline responsive text-wrap overflow containment.
-
-### 8\. ⏱️ Focus Session Time-Window Tracker
-
-Monitors student application window focus telemetry per challenge, capping idle parameters via maximum boundaries (`MAX_SESSION_WINDOW = 900` seconds).
-
-### 9\. 🤝 Sponsors Priority Allocation Controller
-
-Enforces layout reordering routes via Up/Down parameters, using Jinja boundary logic rules to grey out action anchors at index boundaries to prevent script crashes.
+This feature gives administrators a complete settings page to manage event sponsors without touching any code. It replaces static placeholders with a fully automated management dashboard.
 
 * * *
 
