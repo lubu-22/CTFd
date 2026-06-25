@@ -1,28 +1,96 @@
 from flask import Blueprint, render_template, request, redirect, url_for
+from CTFd.models import db, Challenges
 from CTFd.utils import get_config, set_config
 from CTFd.utils.decorators import admins_only
 
 def load(app):
+    # Initialize blueprint pinned to local templates subdirectory context
     plugin_bp = Blueprint('challenge_autofill', __name__, template_folder='templates')
 
+    # CONFIGURATION INTERFACE ROUTE FOR ORGANIZERS
     @plugin_bp.route('/admin/autofill/settings', methods=['GET', 'POST'])
     @admins_only
     def autofill_settings():
         if request.method == 'POST':
-            # --- STANDARD PREFERENCE TRACKERS ---
-            set_config('autofill_std_category', request.form.get('std_category', 'Lab-Standard'))
-            set_config('autofill_std_value', request.form.get('std_value', '100'))
-            set_config('autofill_std_state', request.form.get('std_state', 'visible')) # SPLIT
-            set_config('autofill_std_template', request.form.get('std_template', ''))
+            action_type = request.form.get('action_type', 'save_defaults')
+
+            # --- ACTION A: SAVE THE DEFAULT WIZARD CONFIGURATIONS ---
+            if action_type == 'save_defaults':
+                set_config('autofill_std_category', request.form.get('std_category', 'Lab-Standard'))
+                set_config('autofill_std_value', request.form.get('std_value', '100'))
+                set_config('autofill_std_state', request.form.get('std_state', 'visible'))
+                set_config('autofill_std_template', request.form.get('std_template', ''))
+                
+                set_config('autofill_dyn_category', request.form.get('dyn_category', 'Lab-Dynamic'))
+                set_config('autofill_dyn_initial', request.form.get('dyn_initial', '500'))
+                set_config('autofill_dyn_minimum', request.form.get('dyn_minimum', '100'))
+                set_config('autofill_dyn_decay', request.form.get('dyn_decay', '20'))
+                set_config('autofill_dyn_state', request.form.get('dyn_state', 'hidden'))
+                set_config('autofill_dyn_template', request.form.get('dyn_template', ''))
             
-            # --- DYNAMIC PREFERENCE TRACKERS ---
-            set_config('autofill_dyn_category', request.form.get('dyn_category', 'Lab-Dynamic'))
-            set_config('autofill_dyn_initial', request.form.get('dyn_initial', '500'))
-            set_config('autofill_dyn_minimum', request.form.get('dyn_minimum', '100'))
-            set_config('autofill_dyn_decay', request.form.get('dyn_decay', '20'))
-            set_config('autofill_dyn_state', request.form.get('dyn_state', 'hidden')) # SPLIT
-            set_config('autofill_dyn_template', request.form.get('dyn_template', ''))
-            
+            # --- ACTION B: STANDARD-ONLY BULK OPERATIONS ---
+            elif action_type == 'bulk_modify_standard':
+                target_cat = request.form.get('std_target_category', '').strip()
+                new_value = request.form.get('std_new_value', '').strip()
+                new_state = request.form.get('std_new_state', '').strip()
+
+                if target_cat:
+                    challenges = db.session.query(Challenges).filter(
+                        Challenges.category == target_cat,
+                        Challenges.type != 'dynamic'
+                    ).all()
+                    
+                    for chal in challenges:
+                        if new_value:
+                            chal.value = int(new_value)
+                        if new_state in ['visible', 'hidden']:
+                            chal.state = new_state
+                    db.session.commit()
+
+                        # --- ACTION C: DYNAMIC-ONLY BULK OPERATIONS (FIXED CACHE REFRESH) ---
+            elif action_type == 'bulk_modify_dynamic':
+                target_cat = request.form.get('dyn_target_category', '').strip()
+                new_initial = request.form.get('dyn_new_initial', '').strip()
+                new_minimum = request.form.get('dyn_new_minimum', '').strip()
+                new_state = request.form.get('dyn_new_state', '').strip()
+
+                if target_cat:
+                    challenges = db.session.query(Challenges).filter(
+                        Challenges.category == target_cat,
+                        Challenges.type == 'dynamic'
+                    ).all()
+                    
+                    for chal in challenges:
+                        if new_state in ['visible', 'hidden']:
+                            chal.state = new_state
+                        
+                        # FIXED: Use core SQLAlchemy object binding to update fields and auto-refresh the cache
+                        if new_initial:
+                            chal.value = int(new_initial)
+                            # Update the attached dynamic properties directly through object mapping
+                            if hasattr(chal, 'initial'):
+                                chal.initial = int(new_initial)
+                            else:
+                                # Fallback query targeting the exact framework model mapping safely
+                                db.session.execute(
+                                    db.text("UPDATE dynamic_challenge SET initial = :val WHERE id = :id"),
+                                    {"val": int(new_initial), "id": chal.id}
+                                )
+                                
+                        if new_minimum:
+                            if hasattr(chal, 'minimum'):
+                                chal.minimum = int(new_minimum)
+                            else:
+                                # Fallback query targeting the exact framework model mapping safely
+                                db.session.execute(
+                                    db.text("UPDATE dynamic_challenge SET minimum = :val WHERE id = :id"),
+                                    {"val": int(new_minimum), "id": chal.id}
+                                )
+                                
+                    db.session.commit() # Flush and lock the changes straight onto the database hard drive
+
+
+
             return redirect(url_for('challenge_autofill.autofill_settings'))
 
         current_settings = {
@@ -30,7 +98,6 @@ def load(app):
             'std_value': get_config('autofill_std_value') or '100',
             'std_state': get_config('autofill_std_state') or 'visible',
             'std_template': get_config('autofill_std_template') or '### Standard Description\n[Insert text details here]',
-            
             'dyn_category': get_config('autofill_dyn_category') or 'Lab-Dynamic',
             'dyn_initial': get_config('autofill_dyn_initial') or '500',
             'dyn_minimum': get_config('autofill_dyn_minimum') or '100',
@@ -38,10 +105,22 @@ def load(app):
             'dyn_state': get_config('autofill_dyn_state') or 'hidden',
             'dyn_template': get_config('autofill_dyn_template') or '### Dynamic Decay Challenge\n[Insert text details here]'
         }
-        return render_template('autofill_settings.html', settings=current_settings)
+
+        # DYNAMIC FILTERS: Extract distinct categories grouped by specific type
+        db_std_cats = db.session.query(Challenges.category).filter(Challenges.type != 'dynamic').distinct().all()
+        std_categories = [c.category.strip() for c in db_std_cats if c and c.category and c.category.strip() != ""]
+
+        db_dyn_cats = db.session.query(Challenges.category).filter(Challenges.type == 'dynamic').distinct().all()
+        dyn_categories = [c.category.strip() for c in db_dyn_cats if c and c.category and c.category.strip() != ""]
+
+        return render_template(
+            'autofill_settings.html', 
+            settings=current_settings, 
+            std_categories=std_categories, 
+            dyn_categories=dyn_categories
+        )
 
     app.register_blueprint(plugin_bp)
-
     @app.after_request
     def inject_autofill_script(response):
         path = request.path
@@ -75,7 +154,6 @@ def load(app):
                     const stateSelect = document.querySelector('select[name="state"]') || document.getElementById('state') || document.querySelector('.modal-body select');
 
                     if (isDynamicActive) {
-                        // --- APPLY DYNAMIC CHALLENGE DEFAULT PREFERENCES ---
                         if (categoryInput && categoryInput.value === "") categoryInput.value = "{DYN_CAT}";
                         if (initialInput && initialInput.value === "") initialInput.value = "{DYN_INI}";
                         if (minimumInput && minimumInput.value === "") minimumInput.value = "{DYN_MIN}";
@@ -83,16 +161,13 @@ def load(app):
                         if (mdEditor && mdEditor.CodeMirror && mdEditor.CodeMirror.getValue() === "") {
                             mdEditor.CodeMirror.setValue("{DYN_TPL}");
                         }
-                        // Step 2 State Selection for Dynamic
                         if (stateSelect) stateSelect.value = "{DYN_STE}";
                     } else {
-                        // --- APPLY STANDARD CHALLENGE DEFAULT PREFERENCES ---
                         if (categoryInput && categoryInput.value === "") categoryInput.value = "{STD_CAT}";
                         if (valueInput && valueInput.value === "") valueInput.value = "{STD_VAL}";
                         if (mdEditor && mdEditor.CodeMirror && mdEditor.CodeMirror.getValue() === "") {
                             mdEditor.CodeMirror.setValue("{STD_TPL}");
                         }
-                        // Step 2 State Selection for Standard
                         if (stateSelect) stateSelect.value = "{STD_STE}";
                     }
                 }

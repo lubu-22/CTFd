@@ -3,95 +3,149 @@
 {% block content %}
 <div class="jumbotron py-4 mb-4">
     <div class="container">
-        <h1><i class="fas fa-magic text-primary mr-2"></i> Challenge Autofill Settings</h1>
-        <p class="text-muted mb-0">Configure advanced independent template defaults and state priorities for standard and dynamic challenge forms.</p>
+        <h1><i class="fas fa-magic text-primary mr-2"></i> Challenge Management Hub</h1>
+        <p class="text-muted mb-0">Configure automated creation defaults or perform independent mass bulk updates across existing challenges.</p>
     </div>
 </div>
 
 <div class="container pb-5">
-    <form method="POST">
+    <!-- SECTION 1: DEFAULT PREFERENCES FORM -->
+    <form method="POST" class="mb-5">
         <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+        <input type="hidden" name="action_type" value="save_defaults">
         
         <div class="row">
-            <!-- LEFT PANEL: STANDARD CHALLENGES FORM -->
+            <!-- STANDARD CREATION AUTOMATION MATRIX -->
             <div class="col-md-6 mb-4">
                 <div class="card p-4 shadow-sm border h-100" style="border-radius: 12px; background-color: #ffffff;">
-                    <h4 class="font-weight-bold text-primary mb-3 border-bottom pb-2">
-                        <i class="fas fa-cube mr-1"></i> Standard Challenge Defaults
-                    </h4>
-                    
+                    <h4 class="font-weight-bold text-primary mb-3 border-bottom pb-2"><i class="fas fa-cube mr-1"></i> Standard Defaults</h4>
                     <div class="form-group mb-3">
-                        <label class="font-weight-bold text-dark">Default Category Name:</label>
+                        <label class="font-weight-bold text-dark">Category Name:</label>
                         <input type="text" name="std_category" class="form-control form-control-sm" value="{{ settings.std_category }}" required>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label class="font-weight-bold text-dark">Default Point Value:</label>
+                        <label class="font-weight-bold text-dark">Point Value:</label>
                         <input type="number" name="std_value" class="form-control form-control-sm" value="{{ settings.std_value }}" required>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label class="font-weight-bold text-dark">Default Default State:</label>
+                        <label class="font-weight-bold text-dark">Default State:</label>
                         <select name="std_state" class="form-control form-control-sm font-weight-bold">
                             <option value="visible" {% if settings.std_state == 'visible' %}selected{% endif %}>Visible</option>
                             <option value="hidden" {% if settings.std_state == 'hidden' %}selected{% endif %}>Hidden</option>
                         </select>
                     </div>
-
                     <div class="form-group mb-0">
-                        <label class="font-weight-bold text-dark">Description Message Template:</label>
-                        <textarea name="std_template" class="form-control form-control-sm" rows="5" style="font-family: monospace; font-size: 0.85rem;">{{ settings.std_template }}</textarea>
+                        <label class="font-weight-bold text-dark">Description Template:</label>
+                        <textarea name="std_template" class="form-control form-control-sm" rows="3" style="font-family: monospace;">{{ settings.std_template }}</textarea>
                     </div>
                 </div>
             </div>
 
-            <!-- RIGHT PANEL: DYNAMIC DECAY CHALLENGES FORM -->
+            <!-- DYNAMIC DECAY CREATION AUTOMATION MATRIX -->
             <div class="col-md-6 mb-4">
                 <div class="card p-4 shadow-sm border h-100" style="border-radius: 12px; background-color: #ffffff;">
-                    <h4 class="font-weight-bold text-info mb-3 border-bottom pb-2">
-                        <i class="fas fa-bolt mr-1"></i> Dynamic Challenge Defaults
-                    </h4>
-                    
+                    <h4 class="font-weight-bold text-info mb-3 border-bottom pb-2"><i class="fas fa-bolt mr-1"></i> Dynamic Defaults</h4>
                     <div class="form-group mb-3">
-                        <label class="font-weight-bold text-dark">Default Category Name:</label>
+                        <label class="font-weight-bold text-dark">Category Name:</label>
                         <input type="text" name="dyn_category" class="form-control form-control-sm" value="{{ settings.dyn_category }}" required>
                     </div>
-
                     <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="font-weight-bold text-dark small">Initial Score:</label>
-                            <input type="number" name="dyn_initial" class="form-control form-control-sm" value="{{ settings.dyn_initial }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="font-weight-bold text-dark small">Minimum Score:</label>
-                            <input type="number" name="dyn_minimum" class="form-control form-control-sm" value="{{ settings.dyn_minimum }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="font-weight-bold text-dark small">Decay Target:</label>
-                            <input type="number" name="dyn_decay" class="form-control form-control-sm" value="{{ settings.dyn_decay }}" required>
-                        </div>
+                        <div class="col-md-4"><label class="font-weight-bold text-dark small">Initial:</label><input type="number" name="dyn_initial" class="form-control form-control-sm" value="{{ settings.dyn_initial }}" required></div>
+                        <div class="col-md-4"><label class="font-weight-bold text-dark small">Minimum:</label><input type="number" name="dyn_minimum" class="form-control form-control-sm" value="{{ settings.dyn_minimum }}" required></div>
+                        <div class="col-md-4"><label class="font-weight-bold text-dark small">Decay:</label><input type="number" name="dyn_decay" class="form-control form-control-sm" value="{{ settings.dyn_decay }}" required></div>
                     </div>
-
                     <div class="form-group mb-3">
-                        <label class="font-weight-bold text-dark">Default Default State:</label>
+                        <label class="font-weight-bold text-dark">Default State:</label>
                         <select name="dyn_state" class="form-control form-control-sm font-weight-bold">
                             <option value="hidden" {% if settings.dyn_state == 'hidden' %}selected{% endif %}>Hidden</option>
                             <option value="visible" {% if settings.dyn_state == 'visible' %}selected{% endif %}>Visible</option>
                         </select>
                     </div>
-
                     <div class="form-group mb-0">
-                        <label class="font-weight-bold text-dark">Description Message Template:</label>
-                        <textarea name="dyn_template" class="form-control form-control-sm" rows="5" style="font-family: monospace; font-size: 0.85rem;">{{ settings.dyn_template }}</textarea>
+                        <label class="font-weight-bold text-dark">Description Template:</label>
+                        <textarea name="dyn_template" class="form-control form-control-sm" rows="3" style="font-family: monospace;">{{ settings.dyn_template }}</textarea>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- SUBMIT preferencias -->
-        <button type="submit" class="btn btn-primary font-weight-bold w-100 py-3 shadow" style="border-radius: 10px; font-size: 1.1rem;">
-            <i class="fas fa-save mr-1"></i> Save Split-Mode Autofill Preferences
-        </button>
+        <button type="submit" class="btn btn-primary font-weight-bold w-100 py-2 shadow" style="border-radius: 8px;"><i class="fas fa-save mr-1"></i> Save Form Autofill Preferences</button>
     </form>
+
+    <hr class="my-4">
+    <!-- SECTION 2: SEPARATED DECOUPLED BULK OPERATORS -->
+    <h3 class="font-weight-bold text-dark mb-3"><i class="fas fa-tools text-secondary mr-1"></i> Bulk Challenge Multi-Modifiers</h3>
+    
+    <div class="row">
+        <!-- LEFT OPERATION: STANDARD MODIFICATION PACK -->
+        <div class="col-md-6 mb-4">
+            <div class="card p-4 shadow-sm border h-100" style="background-color: #f0f7ff; border-left: 5px solid #0056b3 !important; border-radius: 10px;">
+                <h5 class="font-weight-bold text-primary mb-2"><i class="fas fa-cube mr-1"></i> Modify Standard Challenges</h5>
+                <p class="text-muted small mb-3">Updates only standard (static) challenges inside a chosen category folder.</p>
+                <form method="POST">
+                    <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                    <input type="hidden" name="action_type" value="bulk_modify_standard">
+                    
+                    <div class="form-group mb-2">
+                        <!-- TARGET FILTERED DROP SELECTION LISTING -->
+                        <select name="std_target_category" class="form-control form-control-sm font-weight-bold" required>
+                            <option value="">-- Select Standard Category --</option>
+                            {% for cat in std_categories %} <option value="{{ cat }}">{{ cat }}</option> {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <input type="number" name="std_new_value" class="form-control form-control-sm" placeholder="Set New Score Value (Optional)">
+                    </div>
+                    <div class="form-group mb-3">
+                        <select name="std_new_state" class="form-control form-control-sm">
+                            <option value="">Keep Existing Visibility State</option>
+                            <option value="visible">Visible (Publish All)</option>
+                            <option value="hidden">Hidden (Hide All)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm btn-block font-weight-bold shadow-sm" onclick="return confirm('Bulk update selected standard challenges?');">
+                        <i class="fas fa-sync mr-1"></i> Execute Standard Mass Update
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT OPERATION: DYNAMIC DECAY MODIFICATION PACK -->
+        <div class="col-md-6 mb-4">
+            <div class="card p-4 shadow-sm border h-100" style="background-color: #f5f5f5; border-left: 5px solid #333333 !important; border-radius: 10px;">
+                <h5 class="font-weight-bold text-dark mb-2"><i class="fas fa-bolt mr-1"></i> Modify Dynamic Decay Challenges</h5>
+                <p class="text-muted small mb-3">Updates only dynamic decay challenges inside a chosen category folder [Fandom].</p>
+                <form method="POST">
+                    <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                    <input type="hidden" name="action_type" value="bulk_modify_dynamic">
+                    
+                    <div class="form-group mb-2">
+                        <!-- TARGET FILTERED DROP SELECTION LISTING -->
+                        <select name="dyn_target_category" class="form-control form-control-sm font-weight-bold" required>
+                            <option value="">-- Select Dynamic Category --</option>
+                            {% for cat in dyn_categories %} <option value="{{ cat }}">{{ cat }}</option> {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row no-gutters mb-2">
+                        <div class="col px-1">
+                            <input type="number" name="dyn_new_initial" class="form-control form-control-sm" placeholder="New Initial Score">
+                        </div>
+                        <div class="col px-1">
+                            <input type="number" name="dyn_new_minimum" class="form-control form-control-sm" placeholder="New Min Score">
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <select name="dyn_new_state" class="form-control form-control-sm">
+                            <option value="">Keep Existing Visibility State</option>
+                            <option value="visible">Visible (Publish All)</option>
+                            <option value="hidden">Hidden (Hide All)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm btn-block font-weight-bold shadow-sm" onclick="return confirm('Bulk update selected dynamic challenges?');">
+                        <i class="fas fa-sync mr-1"></i> Execute Dynamic Mass Update
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
