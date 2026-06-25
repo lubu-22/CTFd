@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="jumbotron py-4 mb-4">
+    <div class="container">
+        <h1><i class="fas fa-clock text-primary mr-2"></i> Automated Scoreboard Freeze</h1>
+        <p class="text-muted mb-0">Schedule an automated date and time threshold to freeze public scoreboard updates based on your local PC clock.</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card p-4 shadow-sm border" style="border-radius: 12px; background-color: #ffffff;">
+                <form id="freezeForm" method="POST">
+                    <input type="hidden" name="nonce" value="{{ Session.nonce }}">
+                    <!-- Hidden field to transport the final converted UTC string to Python -->
+                    <input type="hidden" id="freeze_time_utc" name="freeze_time" value="{{ settings.time }}">
+                    
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold text-dark h5 mb-2">Automation System Status:</label>
+                        <select name="freeze_enabled" class="form-control font-weight-bold">
+                            <option value="0" {% if settings.enabled == '0' %}selected{% endif %}>Disabled (Manual Mode)</option>
+                            <option value="1" {% if settings.enabled == '1' %}selected{% endif %}>Enabled (Automated Schedule Mode)</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">When disabled, scoreboard operations revert to CTFd's manual default panels.</small>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold text-dark h5 mb-2">Target Freeze Execution Time (Your PC Local Time):</label>
+                        <!-- Local user picker input -->
+                        <input type="datetime-local" id="freeze_time_local" class="form-control" required>
+                        <small class="text-muted d-block mt-1">Select the target freeze time exactly as it appears on your computer clock screen.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary font-weight-bold w-100 py-2 mt-2" style="border-radius: 8px;">
+                        <i class="fas fa-save mr-1"></i> Lock Scheduled Freeze Window
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const localInput = document.getElementById('freeze_time_local');
+    const utcInput = document.getElementById('freeze_time_utc');
+    const form = document.getElementById('freezeForm');
+
+    // On page load, if a saved UTC string exists, convert it back to local time for display
+    if (utcInput.value) {
+        try {
+            // Append Z to treat the stored string as absolute UTC context
+            const utcDate = new Date(utcInput.value + ':00Z');
+            if (!isNaN(utcDate.getTime())) {
+                const localISO = new Date(utcDate.getTime() - (utcDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                localInput.value = localISO;
+            }
+        } catch (e) {
+            console.error("Error parsing saved time context:", e);
+        }
+    }
+
+    // Intercept form submission to convert the PC local time picker to universal UTC
+    form.addEventListener('submit', function(e) {
+        if (localInput.value) {
+            const localDate = new Date(localInput.value);
+            // Translate the date directly to an absolute universal ISO text structure
+            const utcISO = localDate.toISOString().slice(0, 16);
+            utcInput.value = utcISO;
+        }
+    });
+});
+</script>
+{% endblock %}
