@@ -78,7 +78,6 @@ Every analytics extension listed above has been built to use a uniform reporting
 
 To spin up, verify, or update the complete multi-module repository framework layout locally, execute these production terminal lines:
 
-bash
 
     # 1. Pull down active branch source tracking alignments
     git checkout hamza
@@ -92,4 +91,3 @@ bash
     ```
     
 
-Use code with caution.
